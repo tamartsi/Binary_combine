@@ -90,7 +90,6 @@ compute_tests_two_pops <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
 compute_tests_two_pops_efficient <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
                                                      n2, ncar2, ncar2_D0, ncar2_D1, prop2,
                                                      return.mid.p = TRUE){
-  if (ncar1 + ncar2 == 0)  return(list(pval_BR = NA, pval_score = NA))
   tests1 <- compute_tests_single_pop_efficient(n1, ncar1, ncar1_D0, ncar1_D1, prop1, return.mid.p = return.mid.p)
   tests2 <- compute_tests_single_pop_efficient(n2, ncar2, ncar2_D0, ncar2_D1, prop2, return.mid.p = return.mid.p)
   
@@ -101,8 +100,6 @@ compute_tests_two_pops_efficient <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop
   
   score <- tests1$score + tests2$score
   var_score <- tests1$var_score + tests2$var_score
-  
-  
   pval_score <- pchisq(score^2/var_score, df = 1, lower.tail = FALSE)
   
   return(list(pval_BR = pval_BR, pval_score = pval_score))
