@@ -52,12 +52,10 @@ generate_sampled_control_data <- function(n, p, ncar, control_case_ratio = 1){
 
 
 compute_tests_two_pops <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
-                                           n2, ncar2, ncar2_D0, ncar2_D1, prop2, 
-                                           return.mid.p = TRUE){
+                                           n2, ncar2, ncar2_D0, ncar2_D1, prop2){
   if (ncar1 + ncar2 == 0)  return(list(pval_BR = NA, pval_score = NA, pval_SPA = NA))
   tests <- compute_tests_two_pops_efficient(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
-                                            n2, ncar2, ncar2_D0, ncar2_D1, prop2, 
-                                            return.mid.p = return.mid.p)
+                                            n2, ncar2, ncar2_D0, ncar2_D1, prop2)
   
   if (tests$pval_score > 0.05){
     pval_SPA <- tests$pval_score
@@ -81,38 +79,36 @@ compute_tests_two_pops <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
                               cov = matrix(c(rep(1, n1), rep(0, n2))))$p.value
   }
   
-  list(pval_BR = tests$pval_BR, pval_score = tests$pval_score, pval_SPA = pval_SPA)
+  list(pval_BR = tests[["pval_BR"]], pval_BR_midp = tests[["pval_BR_midp"]], pval_score = tests[["pval_score"]], pval_SPA = pval_SPA)
   
 }
 
 
 
 compute_tests_two_pops_efficient <- function(n1, ncar1, ncar1_D0, ncar1_D1, prop1,
-                                                     n2, ncar2, ncar2_D0, ncar2_D1, prop2,
-                                                     return.mid.p = TRUE){
-  tests1 <- compute_tests_single_pop_efficient(n1, ncar1, ncar1_D0, ncar1_D1, prop1, return.mid.p = return.mid.p)
-  tests2 <- compute_tests_single_pop_efficient(n2, ncar2, ncar2_D0, ncar2_D1, prop2, return.mid.p = return.mid.p)
+                                                     n2, ncar2, ncar2_D0, ncar2_D1, prop2){
+  tests1 <- compute_tests_single_pop_efficient(n1, ncar1, ncar1_D0, ncar1_D1, prop1)
+  tests2 <- compute_tests_single_pop_efficient(n2, ncar2, ncar2_D0, ncar2_D1, prop2)
   
   pval_BR <- calc.br.pval(ncar = tests1$ncar + tests2$ncar, 
                           sum.d = tests1$ncarD + tests2$ncarD, 
-                          phat = c(rep(tests1$prop, tests1$ncar), rep(tests2$prop, tests2$ncar)),
-                          return.mid.p = return.mid.p)
+                          phat = c(rep(tests1$prop, tests1$ncar), rep(tests2$prop, tests2$ncar)))
   
   score <- tests1$score + tests2$score
   var_score <- tests1$var_score + tests2$var_score
   pval_score <- pchisq(score^2/var_score, df = 1, lower.tail = FALSE)
   
-  return(list(pval_BR = pval_BR, pval_score = pval_score))
+  return(list(pval_BR = pval_BR[["pval"]], pval_BR_midp = pval_BR[["mid.pval"]], pval_score = pval_score))
 }
 
 
 
 
 
-compute_tests_single_pop_efficient <- function(n, ncar, ncar_D0, ncar_D1, prop, return.mid.p = TRUE){
+compute_tests_single_pop_efficient <- function(n, ncar, ncar_D0, ncar_D1, prop){
   
   if (ncar == 0){
-    return(list(ncar = 0, ncarD = 0, prop = prop, score = 0, var_score =0, pval_score = NA, pval_BR = NA))
+    return(list(ncar = 0, ncarD = 0, prop = prop, score = 0, var_score =0, pval_score = NA, pval_BR = NA, pval_BR_midp = NA))
   }
   
   score <- (1-prop)*ncar_D1 -prop*ncar_D0
@@ -122,9 +118,10 @@ compute_tests_single_pop_efficient <- function(n, ncar, ncar_D0, ncar_D1, prop, 
   var_score <- (s*ncar*(n-ncar))/n
   pval_score <- pchisq(score^2/var_score, df = 1, lower.tail = FALSE)
   
-  pval_BR <- calc.br.pval(ncar, ncar_D1, rep(prop, ncar), return.mid.p = return.mid.p)
+  pval_BR <- calc.br.pval(ncar, ncar_D1, rep(prop, ncar))
   
-  return(list(ncar = ncar, ncarD = ncar_D1, prop = prop, score = score, var_score = var_score, pval_score = pval_score, pval_BR = pval_BR))
+  return(list(ncar = ncar, ncarD = ncar_D1, prop = prop, score = score, var_score = var_score, 
+  					pval_score = pval_score, pval_BR = pval_BR[["pval"]], pval_BR_midp = pval_BR[["mid.pval"]]))
   
 }
 
