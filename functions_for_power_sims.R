@@ -20,10 +20,10 @@ generate_case_control_data <- function(n, p, ncar, effect_size, model = "logisti
 
 
 ### using only summaries -- not generating g vector. 
-compute_tests_single_pop_efficient <- function(d, g_inds, pD = NULL, return.mid.p = TRUE){
+compute_tests_single_pop_efficient <- function(d, g_inds, pD = NULL){
   
   if (length(g_inds) == 0){
-    return(list(ncar = 0, ncarD = 0, prop = mean(d), score = 0, var_score =0, pval_score = NA, pval_BR = NA))
+    return(list(ncar = 0, ncarD = 0, prop = mean(d), score = 0, var_score =0, pval_score = NA, pval_BR = NA, pval_BR_midp = NA))
   }
   
   n <- length(d)
@@ -44,29 +44,29 @@ compute_tests_single_pop_efficient <- function(d, g_inds, pD = NULL, return.mid.
   var_score <- (s*ncar*(n-ncar))/n
   pval_score <- pchisq(score^2/var_score, df = 1, lower.tail = FALSE)
   
-  pval_BR <- calc.br.pval(ncar, ncarD, rep(prop, ncar), return.mid.p = return.mid.p)
+  pvals_BR <- calc.br.pval(ncar, ncarD, rep(prop, ncar))
   
-  return(list(ncar = ncar, ncarD = ncarD, prop = prop, score = score, var_score = var_score, pval_score = pval_score, pval_BR = pval_BR))
+  return(list(ncar = ncar, ncarD = ncarD, prop = prop, score = score, var_score = var_score, 
+              pval_score = pval_score, pval_BR = pvals_BR[["pval"]], pval_BR_midp = pvals_BR[["mid.pval"]]))
   
 }
 
 
-compute_tests_two_pops_efficient <- function(d1, g_inds1, d2, g_inds2, pD1 = NULL, pD2 = NULL, return.mid.p = TRUE){
-  tests1 <- compute_tests_single_pop_efficient(d1, g_inds1, pD = pD1, return.mid.p = return.mid.p)
-  tests2 <- compute_tests_single_pop_efficient(d2, g_inds2, pD = pD2, return.mid.p = return.mid.p)
+compute_tests_two_pops_efficient <- function(d1, g_inds1, d2, g_inds2, pD1 = NULL, pD2 = NULL){
+  tests1 <- compute_tests_single_pop_efficient(d1, g_inds1, pD = pD1)
+  tests2 <- compute_tests_single_pop_efficient(d2, g_inds2, pD = pD2)
   
-  if (tests1$ncar + tests2$ncar == 0) return(list(pval_BR = NA, pval_score = NA))
+  if (tests1$ncar + tests2$ncar == 0) return(list(pval_BR = NA, pval_BR_midp = NA, pval_score = NA))
   
-  pval_BR <- calc.br.pval(ncar = tests1$ncar + tests2$ncar, 
+  pvals_BR <- calc.br.pval(ncar = tests1$ncar + tests2$ncar, 
                           sum.d = tests1$ncarD + tests2$ncarD, 
-                          phat = c(rep(tests1$prop, tests1$ncar), rep(tests2$prop, tests2$ncar)), 
-                          return.mid.p = return.mid.p)
+                          phat = c(rep(tests1$prop, tests1$ncar), rep(tests2$prop, tests2$ncar)))
   
   score <- tests1$score + tests2$score
   var_score <- tests1$var_score + tests2$var_score
   pval_score <- pchisq(score^2/var_score, df = 1, lower.tail = FALSE)
   
-  return(list(pval_BR = pval_BR, pval_score = pval_score))
+  return(list(pval_BR = pvals_BR[["pval"]], pval_BR_midp = pvals_BR[["mid.pval"]], pval_score = pval_score))
 }
 
 
@@ -77,7 +77,8 @@ compute_tests_single_pop <- function(d, g_inds, pD = NULL){
   tests <- compute_tests_single_pop_efficient(d, g_inds, pD = pD)
   
   if (is.na(tests$pval_score)){
-    return(list(pval_BR = tests$pval_BR, pval_score = tests$pval_score, pval_SPA = pval_SPA))
+    return(list(pval_BR = tests$pval_BR, pval_BR_midp = tests$pval_BR_midp, 
+                pval_score = tests$pval_score, pval_SPA = pval_SPA))
   }
   
   if (tests$pval_score > 0.05){
@@ -87,15 +88,15 @@ compute_tests_single_pop <- function(d, g_inds, pD = NULL){
     g[g_inds] <- 1
     pval_SPA <- ScoreTest_SPA(genos = g, pheno = d)$p.value
   }
-  list(pval_BR = tests$pval_BR, pval_score = tests$pval_score, pval_SPA = pval_SPA)
+  list(pval_BR = tests$pval_BR, pval_BR_midp = tests$pval_BR_midp, pval_score = tests$pval_score, pval_SPA = pval_SPA)
   
 }
 
 # includes option to take known disease probabilities (rather than compute them from the data).
 # this will only apply for score and BinomiRare tests, not for SPA!
-compute_tests_two_pops <- function(d1, g_inds1, d2, g_inds2, pD1 = NULL, pD2 = NULL, return.mid.p = TRUE){
-  if (length(c(g_inds1, g_inds2)) == 0)  return(list(pval_BR = NA, pval_score = NA))
-  tests <- compute_tests_two_pops_efficient(d1, g_inds1, d2, g_inds2, pD1 = pD1, pD2 = pD2, return.mid.p  = return.mid.p)
+compute_tests_two_pops <- function(d1, g_inds1, d2, g_inds2, pD1 = NULL, pD2 = NULL){
+  if (length(c(g_inds1, g_inds2)) == 0)  return(list(pval_BR = NA, pval_BR_midp = NA, pval_score = NA, pval_SPA = NA ))
+  tests <- compute_tests_two_pops_efficient(d1, g_inds1, d2, g_inds2, pD1 = pD1, pD2 = pD2)
   
   if (tests$pval_score > 0.05){
     pval_SPA <- tests$pval_score
@@ -111,7 +112,7 @@ compute_tests_two_pops <- function(d1, g_inds1, d2, g_inds2, pD1 = NULL, pD2 = N
                               cov = matrix(c(rep(1, length(d1)), rep(0, length(d2)))))$p.value
   }
   
-  list(pval_BR = tests$pval_BR, pval_score = tests$pval_score, pval_SPA = pval_SPA)
+  list(pval_BR = tests[["pval_BR"]], pval_BR_midp = tests[["pval_BR_midp"]], pval_score = tests$pval_score, pval_SPA = pval_SPA)
   
 }
 
