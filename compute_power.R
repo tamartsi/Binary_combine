@@ -1,5 +1,5 @@
 
-### given vectors of disease probabilities (assumed under the null) for each of n individuals, 
+### given a vector of disease probabilities (assumed under the null) for each of n individuals, 
 ### an odds ratio parameter
 ### a vector of p-value thresholds, and number of carriers, computes power for BinomiRare test
 ### (both p-value and mid-p-value). 
